@@ -31,7 +31,7 @@ public abstract class AbstractRunnable implements Runnable {
         return false;
     }
 
-    public final void run() {
+    public void run() {
         try {
             doRun();
         } catch (InterruptedException ex) {

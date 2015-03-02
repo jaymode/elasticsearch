@@ -52,6 +52,11 @@ public class NettyTransportChannel implements TransportChannel {
     private final long requestId;
     private final String profileName;
 
+    // Needed to maintain BWC for plugins
+    public NettyTransportChannel(NettyTransport transport, String action, Channel channel, long requestId, Version version) {
+        this(transport, null, action, channel, requestId, version, null);
+    }
+
     public NettyTransportChannel(NettyTransport transport, TransportServiceAdapter transportServiceAdapter, String action, Channel channel, long requestId, Version version, String profileName) {
         this.transportServiceAdapter = transportServiceAdapter;
         this.version = version;
@@ -106,7 +111,9 @@ public class NettyTransportChannel implements TransportChannel {
             ReleaseChannelFutureListener listener = new ReleaseChannelFutureListener(bytes);
             future.addListener(listener);
             addedReleaseListener = true;
-            transportServiceAdapter.onResponseSent(requestId, action, response, options);
+            if (transportServiceAdapter != null) {
+                transportServiceAdapter.onResponseSent(requestId, action, response, options);
+            }
         } finally {
             if (!addedReleaseListener) {
                 Releasables.close(bStream.bytes());
@@ -140,6 +147,8 @@ public class NettyTransportChannel implements TransportChannel {
         ChannelBuffer buffer = bytes.toChannelBuffer();
         NettyHeader.writeHeader(buffer, requestId, status, version);
         channel.write(buffer);
-        transportServiceAdapter.onResponseSent(requestId, action, error);
+        if (transportServiceAdapter != null) {
+            transportServiceAdapter.onResponseSent(requestId, action, error);
+        }
     }
 }

@@ -51,6 +51,11 @@ public class MessageChannelHandler extends SimpleChannelUpstreamHandler {
     protected final NettyTransport transport;
     protected final String profileName;
 
+    // Needed to maintain BWC for plugins
+    public MessageChannelHandler(NettyTransport transport, ESLogger logger) {
+        this(transport, logger, null);
+    }
+
     public MessageChannelHandler(NettyTransport transport, ESLogger logger, String profileName) {
         this.threadPool = transport.threadPool();
         this.transportServiceAdapter = transport.transportServiceAdapter();
