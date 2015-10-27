@@ -340,7 +340,7 @@ public abstract class ESIntegTestCase extends ESTestCase {
                     fail("Unknown Scope: [" + currentClusterScope + "]");
             }
             cluster().beforeTest(getRandom(), getPerTestTransportClientRatio());
-            cluster().wipe(excludeTemplates());
+            cluster().wipe(excludeTemplates(), systemIndices());
             randomIndexTemplate();
         } catch (OutOfMemoryError e) {
             if (e.getMessage().contains("unable to create new native thread")) {
@@ -608,11 +608,11 @@ public abstract class ESIntegTestCase extends ESTestCase {
                         }
                     }
                     beforeIndexDeletion();
-                    cluster().wipe(excludeTemplates()); // wipe after to make sure we fail in the test that didn't ack the delete
+                    cluster().wipe(excludeTemplates(), systemIndices()); // wipe after to make sure we fail in the test that didn't ack the delete
                     if (afterClass || currentClusterScope == Scope.TEST) {
                         cluster().close();
                     }
-                    cluster().assertAfterTest();
+                    cluster().assertAfterTest(systemIndices());
                 }
             } finally {
                 if (currentClusterScope == Scope.TEST) {
@@ -636,8 +636,12 @@ public abstract class ESIntegTestCase extends ESTestCase {
         return Collections.emptySet();
     }
 
+    protected Set<String> systemIndices() {
+        return Collections.emptySet();
+    }
+
     protected void beforeIndexDeletion() {
-        cluster().beforeIndexDeletion();
+        cluster().beforeIndexDeletion(systemIndices());
     }
 
     public static TestCluster cluster() {

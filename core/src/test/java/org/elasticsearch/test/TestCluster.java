@@ -73,8 +73,20 @@ public abstract class TestCluster implements Iterable<Client>, Closeable {
     /**
      * Wipes any data that a test can leave behind: indices, templates (except exclude templates) and repositories
      */
-    public void wipe(Set<String> excludeTemplates) {
-        wipeIndices("_all");
+    public void wipe(Set<String> excludeTemplates, Set<String> systemIndices) {
+        if (systemIndices.isEmpty()) {
+            wipeIndices("_all");
+        } else {
+            ClusterStateResponse clusterStateResponse = client().admin().cluster().prepareState().execute().actionGet();
+            ObjectArrayList<String> indicesToWipe = new ObjectArrayList<>();
+            for (IndexMetaData indexMetaData : clusterStateResponse.getState().metaData()) {
+                String index = indexMetaData.getIndex();
+                if (systemIndices.contains(index) == false) {
+                    indicesToWipe.add(index);
+                }
+            }
+            wipeIndices(indicesToWipe.toArray(String.class));
+        }
         wipeAllTemplates(excludeTemplates);
         wipeRepositories();
     }
@@ -82,13 +94,13 @@ public abstract class TestCluster implements Iterable<Client>, Closeable {
     /**
      * Assertions that should run before the cluster is wiped should be called in this method
      */
-    public void beforeIndexDeletion() {
+    public void beforeIndexDeletion(Set<String> systemIndices) {
     }
 
     /**
      * This method checks all the things that need to be checked after each test
      */
-    public void assertAfterTest() throws IOException {
+    public void assertAfterTest(Set<String> systemIndices) throws IOException {
         ensureEstimatedStats();
     }
 

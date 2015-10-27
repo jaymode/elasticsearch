@@ -1022,13 +1022,13 @@ public final class InternalTestCluster extends TestCluster {
     }
 
     @Override
-    public void beforeIndexDeletion() {
+    public void beforeIndexDeletion(Set<String> systemIndices) {
         // Check that the operations counter on index shard has reached 0.
         // The assumption here is that after a test there are no ongoing write operations.
         // test that have ongoing write operations after the test (for example because ttl is used
         // and not all docs have been purged after the test) and inherit from
         // ElasticsearchIntegrationTest must override beforeIndexDeletion() to avoid failures.
-        assertShardIndexCounter();
+        assertShardIndexCounter(systemIndices);
         //check that shards that have same sync id also contain same number of documents
         assertSameSyncIdSameDocs();
 
@@ -1058,13 +1058,15 @@ public final class InternalTestCluster extends TestCluster {
         }
     }
 
-    private void assertShardIndexCounter() {
+    private void assertShardIndexCounter(Set<String> systemIndices) {
         final Collection<NodeAndClient> nodesAndClients = nodes.values();
         for (NodeAndClient nodeAndClient : nodesAndClients) {
             IndicesService indexServices = getInstance(IndicesService.class, nodeAndClient.name);
             for (IndexService indexService : indexServices) {
                 for (IndexShard indexShard : indexService) {
-                    assertThat("index shard counter on shard " + indexShard.shardId() + " on node " + nodeAndClient.name + " not 0", indexShard.getOperationsCount(), equalTo(0));
+                    if (systemIndices.contains(indexShard.shardId().getIndex()) == false) {
+                        assertThat("index shard counter on shard " + indexShard.shardId() + " on node " + nodeAndClient.name + " not 0", indexShard.getOperationsCount(), equalTo(0));
+                    }
                 }
             }
         }
@@ -1882,13 +1884,16 @@ public final class InternalTestCluster extends TestCluster {
     }
 
     @Override
-    public void assertAfterTest() throws IOException {
-        super.assertAfterTest();
+    public void assertAfterTest(Set<String> systemIndices) throws IOException {
+        super.assertAfterTest(systemIndices);
         for (NodeEnvironment env : this.getInstances(NodeEnvironment.class)) {
             Set<ShardId> shardIds = env.lockedShards();
             for (ShardId id : shardIds) {
                 try {
-                    env.shardLock(id, TimeUnit.SECONDS.toMillis(5)).close();
+                    // system indices can have ongoing operations until the cluster shuts down...
+                    if (systemIndices.contains(id.getIndex()) == false) {
+                        env.shardLock(id, TimeUnit.SECONDS.toMillis(5)).close();
+                    }
                 } catch (IOException ex) {
                     fail("Shard " + id + " is still locked after 5 sec waiting");
                 }
