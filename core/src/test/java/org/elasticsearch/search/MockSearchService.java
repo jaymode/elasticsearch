@@ -36,8 +36,7 @@ import org.elasticsearch.search.internal.SearchContext;
 import org.elasticsearch.search.query.QueryPhase;
 import org.elasticsearch.threadpool.ThreadPool;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MockSearchService extends SearchService {
@@ -59,10 +58,21 @@ public class MockSearchService extends SearchService {
     private static final Map<SearchContext, Throwable> ACTIVE_SEARCH_CONTEXTS = new ConcurrentHashMap<>();
 
     /** Throw an {@link AssertionError} if there are still in-flight contexts. */
-    public static void assertNoInFLightContext() {
+    public static void assertNoInFLightContext(Set<String> systemIndices) {
         final Map<SearchContext, Throwable> copy = new HashMap<>(ACTIVE_SEARCH_CONTEXTS);
+        Iterator<SearchContext> iterator = copy.keySet().iterator();
+        while (iterator.hasNext()) {
+            SearchContext context = iterator.next();
+            if (systemIndices.contains(context.indexShard().shardId().getIndex())) {
+                System.err.println("removing search context for " + context.indexShard().shardId().getIndex());
+                iterator.remove();
+            }
+        }
+
         if (copy.isEmpty() == false) {
-            throw new AssertionError("There are still " + copy.size() + " in-flight contexts", copy.values().iterator().next());
+            throw new AssertionError("There are still " + copy.size() + " in-flight contexts for index " +
+                    copy.keySet().iterator().next().indexShard().shardId().getIndex() + " with system indices " + Arrays.toString(systemIndices.toArray())
+                    , copy.values().iterator().next());
         }
     }
 

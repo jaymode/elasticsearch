@@ -636,10 +636,6 @@ public abstract class ESIntegTestCase extends ESTestCase {
         return Collections.emptySet();
     }
 
-    protected Set<String> systemIndices() {
-        return Collections.emptySet();
-    }
-
     protected void beforeIndexDeletion() {
         cluster().beforeIndexDeletion(systemIndices());
     }

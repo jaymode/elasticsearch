@@ -85,7 +85,9 @@ public abstract class TestCluster implements Iterable<Client>, Closeable {
                     indicesToWipe.add(index);
                 }
             }
-            wipeIndices(indicesToWipe.toArray(String.class));
+            if (indicesToWipe.isEmpty() == false) {
+                wipeIndices(indicesToWipe.toArray(String.class));
+            }
         }
         wipeAllTemplates(excludeTemplates);
         wipeRepositories();

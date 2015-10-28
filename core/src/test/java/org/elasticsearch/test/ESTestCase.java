@@ -202,7 +202,7 @@ public abstract class ESTestCase extends LuceneTestCase {
         assertBusy(new Runnable() {
             @Override
             public void run() {
-                MockSearchService.assertNoInFLightContext();
+                MockSearchService.assertNoInFLightContext(systemIndices());
             }
         });
     }
@@ -683,5 +683,10 @@ public abstract class ESTestCase extends LuceneTestCase {
     /** Returns the suite failure marker: internal use only! */
     public static TestRuleMarkFailure getSuiteFailureMarker() {
         return suiteFailureMarker;
+    }
+
+    // FIXME this is ugly and really shouldn't be here
+    protected Set<String> systemIndices() {
+        return Collections.emptySet();
     }
 }
