@@ -103,7 +103,7 @@ public abstract class TestCluster implements Iterable<Client>, Closeable {
      * This method checks all the things that need to be checked after each test
      */
     public void assertAfterTest(Set<String> systemIndices) throws IOException {
-        ensureEstimatedStats();
+        ensureEstimatedStats(systemIndices);
     }
 
     /**
@@ -241,7 +241,7 @@ public abstract class TestCluster implements Iterable<Client>, Closeable {
      * The implementation is specific to the test cluster, because the act of
      * checking some breaker stats can increase them.
      */
-    public abstract void ensureEstimatedStats();
+    public abstract void ensureEstimatedStats(Set<String> systemIndices);
 
     /**
      * Returns the cluster name

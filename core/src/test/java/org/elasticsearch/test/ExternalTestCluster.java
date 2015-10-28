@@ -41,6 +41,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -139,10 +140,11 @@ public final class ExternalTestCluster extends TestCluster {
     }
 
     @Override
-    public void ensureEstimatedStats() {
+    public void ensureEstimatedStats(Set<String> systemIndices) {
         if (size() > 0) {
             NodesStatsResponse nodeStats = client().admin().cluster().prepareNodesStats()
                     .clear().setBreaker(true).setIndices(true).execute().actionGet();
+            // FIXME validate if we need to skip here - most likely yes...
             for (NodeStats stats : nodeStats.getNodes()) {
                 assertThat("Fielddata breaker not reset to 0 on node: " + stats.getNode(),
                         stats.getBreaker().getStats(CircuitBreaker.FIELDDATA).getEstimated(), equalTo(0L));

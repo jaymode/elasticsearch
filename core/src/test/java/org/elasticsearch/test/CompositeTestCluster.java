@@ -221,10 +221,11 @@ public class CompositeTestCluster extends TestCluster {
     }
 
     @Override
-    public void ensureEstimatedStats() {
+    public void ensureEstimatedStats(Set<String> systemIndices) {
         if (size() > 0) {
             NodesStatsResponse nodeStats = client().admin().cluster().prepareNodesStats()
                     .clear().setBreaker(true).execute().actionGet();
+            // FIXME validate if we need to skip here
             for (NodeStats stats : nodeStats.getNodes()) {
                 assertThat("Fielddata breaker not reset to 0 on node: " + stats.getNode(),
                         stats.getBreaker().getStats(CircuitBreaker.FIELDDATA).getEstimated(), equalTo(0L));
