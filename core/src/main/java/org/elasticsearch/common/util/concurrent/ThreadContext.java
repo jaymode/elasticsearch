@@ -197,7 +197,7 @@ public final class ThreadContext implements Closeable, Writeable<ThreadContext.T
         }
     }
 
-    static final class ThreadContextStruct implements Writeable<ThreadContextStruct> {
+    final class ThreadContextStruct implements Writeable<ThreadContextStruct> {
         private final Map<String,String> headers;
         private final Map<String, Object> transientHeaders;
 
@@ -225,7 +225,16 @@ public final class ThreadContext implements Closeable, Writeable<ThreadContext.T
                 return this;
             } else {
                 Map<String, String> newHeaders = new HashMap<>(headers); // first add the new headers
-                newHeaders.putAll(this.headers); // now add the new ones - we do a merge and preserve already existing ones
+                if (this == defaultContext) {
+                    // we don't want to preserve defaults, we want to overwrite those...
+                    this.headers.forEach( (k, v) -> {
+                        if (newHeaders.containsKey(k) == false) {
+                            newHeaders.put(k, v);
+                        }
+                    });
+                } else {
+                    newHeaders.putAll(this.headers); // now we do a merge and preserve the already existing ones
+                }
                 return new ThreadContextStruct(newHeaders, transientHeaders);
             }
         }
@@ -299,6 +308,7 @@ public final class ThreadContext implements Closeable, Writeable<ThreadContext.T
                 if (threadContextStruct != null) {
                     return threadContextStruct;
                 }
+                // defaultStruct should be immutable
                 return defaultStruct;
             } catch (NullPointerException ex) {
                 /* This is odd but CloseableThreadLocal throws a NPE if it was closed but still accessed.
