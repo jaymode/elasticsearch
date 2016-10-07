@@ -41,6 +41,7 @@ public abstract class AbstractRestChannel implements RestChannel {
     protected final RestRequest request;
     protected final boolean detailedErrorsEnabled;
     private final String format;
+    private final String accept;
     private final String filterPath;
     private final boolean pretty;
     private final boolean human;
@@ -50,7 +51,8 @@ public abstract class AbstractRestChannel implements RestChannel {
     protected AbstractRestChannel(RestRequest request, boolean detailedErrorsEnabled) {
         this.request = request;
         this.detailedErrorsEnabled = detailedErrorsEnabled;
-        this.format = request.param("format", request.header("Accept"));
+        this.format = request.param("format", null);
+        this.accept = request.header("Accept");
         this.filterPath = request.param("filter_path", null);
         this.pretty = request.paramAsBoolean("pretty", false);
         this.human = request.paramAsBoolean("human", false);
@@ -69,17 +71,7 @@ public abstract class AbstractRestChannel implements RestChannel {
 
     @Override
     public XContentBuilder newBuilder(@Nullable BytesReference autoDetectSource, boolean useFiltering) throws IOException {
-        XContentType contentType = XContentType.fromMediaTypeOrFormat(format);
-        if (contentType == null) {
-            // try and guess it from the auto detect source
-            if (autoDetectSource != null) {
-                contentType = XContentFactory.xContentType(autoDetectSource);
-            }
-        }
-        if (contentType == null) {
-            // default to JSON
-            contentType = XContentType.JSON;
-        }
+        XContentType contentType = determineContentType(autoDetectSource, format, accept);
 
         Set<String> includes = Collections.emptySet();
         Set<String> excludes = Collections.emptySet();
@@ -96,6 +88,24 @@ public abstract class AbstractRestChannel implements RestChannel {
 
         builder.humanReadable(human);
         return builder;
+    }
+
+    static XContentType determineContentType(@Nullable BytesReference autoDetectSource, @Nullable String format, @Nullable String accept) {
+        XContentType contentType = XContentType.fromFormat(format);
+        if (contentType == null) {
+            contentType = XContentType.fromAccept(accept);
+        }
+
+        // try and guess it from the auto detect source if possible
+        if (contentType == null && autoDetectSource != null) {
+            contentType = XContentFactory.xContentType(autoDetectSource);
+        }
+
+        if (contentType == null) {
+            // default to JSON
+            contentType = XContentType.JSON;
+        }
+        return contentType;
     }
 
     /**

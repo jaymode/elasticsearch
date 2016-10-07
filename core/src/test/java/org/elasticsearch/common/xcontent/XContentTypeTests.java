@@ -29,59 +29,107 @@ public class XContentTypeTests extends ESTestCase {
     public void testFromJson() throws Exception {
         String mediaType = "application/json";
         XContentType expectedXContentType = XContentType.JSON;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+        assertThat(XContentType.fromFormat("json"), equalTo(expectedXContentType));
     }
 
     public void testFromJsonUppercase() throws Exception {
         String mediaType = "application/json".toUpperCase(Locale.ROOT);
         XContentType expectedXContentType = XContentType.JSON;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+        assertThat(XContentType.fromFormat("json".toUpperCase(Locale.ROOT)), equalTo(expectedXContentType));
     }
 
     public void testFromYaml() throws Exception {
         String mediaType = "application/yaml";
         XContentType expectedXContentType = XContentType.YAML;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + "; charset=UTF-8"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+        assertThat(XContentType.fromFormat("yaml"), equalTo(expectedXContentType));
     }
 
     public void testFromSmile() throws Exception {
         String mediaType = "application/smile";
         XContentType expectedXContentType = XContentType.SMILE;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+        assertThat(XContentType.fromFormat("smile"), equalTo(expectedXContentType));
     }
 
     public void testFromCbor() throws Exception {
         String mediaType = "application/cbor";
         XContentType expectedXContentType = XContentType.CBOR;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromContentType(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+        assertThat(XContentType.fromFormat("cbor"), equalTo(expectedXContentType));
     }
 
     public void testFromWildcard() throws Exception {
-        String mediaType = "application/*";
+        String mediaType = "*/*";
+        assertNull(XContentType.fromContentType(mediaType));
+        assertNull(XContentType.fromContentType(mediaType + ";"));
         XContentType expectedXContentType = XContentType.JSON;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+        assertNull(XContentType.fromFormat(mediaType));
     }
 
-    public void testFromWildcardUppercase() throws Exception {
-        String mediaType = "APPLICATION/*";
+    public void testFromApplicationWildcard() throws Exception {
+        String mediaType = "application/*";
+        assertNull(XContentType.fromContentType(mediaType));
+        assertNull(XContentType.fromContentType(mediaType + ";"));
         XContentType expectedXContentType = XContentType.JSON;
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType), equalTo(expectedXContentType));
-        assertThat(XContentType.fromMediaTypeOrFormat(mediaType + ";"), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
+    }
+
+    public void testFromApplicationWildcardUppercase() throws Exception {
+        String mediaType = "APPLICATION/*";
+        assertNull(XContentType.fromContentType(mediaType));
+        assertNull(XContentType.fromContentType(mediaType + ";"));
+        XContentType expectedXContentType = XContentType.JSON;
+        assertThat(XContentType.fromAccept(mediaType), equalTo(expectedXContentType));
+        assertThat(XContentType.fromAccept(mediaType + ";"), equalTo(expectedXContentType));
+        assertNull(XContentType.fromFormat(mediaType));
     }
 
     public void testFromRubbish() throws Exception {
-        assertThat(XContentType.fromMediaTypeOrFormat(null), nullValue());
-        assertThat(XContentType.fromMediaTypeOrFormat(""), nullValue());
-        assertThat(XContentType.fromMediaTypeOrFormat("text/plain"), nullValue());
-        assertThat(XContentType.fromMediaTypeOrFormat("gobbly;goop"), nullValue());
+        assertThat(XContentType.fromContentType(null), nullValue());
+        assertThat(XContentType.fromContentType(""), nullValue());
+        assertThat(XContentType.fromContentType("text/plain"), nullValue());
+        assertThat(XContentType.fromContentType("gobbly;goop"), nullValue());
+        assertThat(XContentType.fromAccept(null), nullValue());
+        assertThat(XContentType.fromAccept(""), nullValue());
+        assertThat(XContentType.fromAccept("text/plain"), nullValue());
+        assertThat(XContentType.fromAccept("gobbly;goop"), nullValue());
+        assertThat(XContentType.fromFormat(null), nullValue());
+        assertThat(XContentType.fromFormat(""), nullValue());
+        assertThat(XContentType.fromFormat("text/plain"), nullValue());
+        assertThat(XContentType.fromFormat("gobbly;goop"), nullValue());
     }
 }

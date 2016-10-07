@@ -57,7 +57,7 @@ public class ClientYamlTestResponse {
     private void parseResponseBody() throws IOException {
         if (body != null) {
             String contentType = response.getHeader("Content-Type");
-            XContentType xContentType = XContentType.fromMediaTypeOrFormat(contentType);
+            XContentType xContentType = XContentType.fromContentType(contentType);
             //skip parsing if we got text back (e.g. if we called _cat apis)
             if (xContentType == XContentType.JSON || xContentType == XContentType.YAML) {
                 this.parsedResponse = ObjectPath.createFromXContent(xContentType.xContent(), body);

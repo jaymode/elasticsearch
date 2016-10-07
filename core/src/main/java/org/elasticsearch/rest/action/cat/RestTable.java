@@ -50,7 +50,11 @@ public class RestTable {
 
     public static RestResponse buildResponse(Table table, RestChannel channel) throws Exception {
         RestRequest request = channel.request();
-        XContentType xContentType = XContentType.fromMediaTypeOrFormat(request.param("format", request.header("Accept")));
+        XContentType xContentType = XContentType.fromFormat(request.param("format", null));
+        if (xContentType == null) {
+            xContentType = XContentType.fromAccept(request.header("Accept"));
+        }
+
         if (xContentType != null) {
             return buildXContentBuilder(table, channel);
         }

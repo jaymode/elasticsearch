@@ -154,7 +154,7 @@ public class RemoteScrollableHitSource extends ScrollableHitSource {
                             InputStream content = responseEntity.getContent();
                             XContentType xContentType = null;
                             if (responseEntity.getContentType() != null) {
-                                 xContentType = XContentType.fromMediaTypeOrFormat(responseEntity.getContentType().getValue());
+                                 xContentType = XContentType.fromContentType(responseEntity.getContentType().getValue());
                             }
                             if (xContentType == null) {
                                 //auto-detect as a fallback

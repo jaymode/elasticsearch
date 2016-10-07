@@ -450,7 +450,8 @@ public final class Script implements ToXContent, Writeable {
             out.writeMap(params.isEmpty() ? null : params);
 
             if (options.containsKey(CONTENT_TYPE_OPTION)) {
-                XContentType contentType = XContentType.fromMediaTypeOrFormat(options.get(CONTENT_TYPE_OPTION));
+                XContentType contentType = XContentType.fromContentType(options.get(CONTENT_TYPE_OPTION));
+                assert contentType != null;
                 out.writeBoolean(true);
                 contentType.writeTo(out);
             } else {

@@ -19,6 +19,7 @@
 
 package org.elasticsearch.common.xcontent;
 
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Writeable;
@@ -117,26 +118,62 @@ public enum XContentType implements Writeable {
         }
     };
 
-    public static XContentType fromMediaTypeOrFormat(String mediaType) {
-        if (mediaType == null) {
-            return null;
-        }
-        for (XContentType type : values()) {
-            if (isSameMediaTypeAs(mediaType, type)) {
-                return type;
+    /**
+     * Attempts to match the string representation of a content type to the appropriate {@link XContentType}. No wildcards will be matched
+     * by this method
+     */
+    public static XContentType fromContentType(String contentType) {
+        if (Strings.hasLength(contentType)) {
+            final String contentTypeLowerCase = contentType.toLowerCase(Locale.ROOT);
+            for (XContentType type : values()) {
+                if (isSameMediaTypeAs(contentTypeLowerCase, type)) {
+                    return type;
+                }
             }
         }
-        if(mediaType.toLowerCase(Locale.ROOT).startsWith("application/*")) {
-            return JSON;
+
+        return null;
+    }
+
+    /**
+     * Attempts to match the string representation of a content type to the appropriate {@link XContentType}. A match all wildcard
+     * or an application type wildcard will be mapped to JSON
+     */
+    public static XContentType fromAccept(String accept) {
+        if (Strings.hasLength(accept)) {
+            final String acceptLowerCase = accept.toLowerCase(Locale.ROOT);
+            for (XContentType type : values()) {
+                if (isSameMediaTypeAs(acceptLowerCase, type)) {
+                    return type;
+                }
+            }
+
+            if (acceptLowerCase.startsWith("*/*") || acceptLowerCase.startsWith("application/*")) {
+                return JSON;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Attempts to match the short format to the appropriate {@link XContentType}
+     */
+    public static XContentType fromFormat(String format) {
+        if (Strings.hasLength(format)) {
+            final String formatLowerCase = format.toLowerCase(Locale.ROOT);
+            for (XContentType type : values()) {
+                if (formatLowerCase.equals(type.shortName())) {
+                    return type;
+                }
+            }
         }
 
         return null;
     }
 
     private static boolean isSameMediaTypeAs(String stringType, XContentType type) {
-        return type.mediaTypeWithoutParameters().equalsIgnoreCase(stringType) ||
-                stringType.toLowerCase(Locale.ROOT).startsWith(type.mediaTypeWithoutParameters().toLowerCase(Locale.ROOT) + ";") ||
-                type.shortName().equalsIgnoreCase(stringType);
+        return type.mediaTypeWithoutParameters().equals(stringType) ||
+                stringType.startsWith(type.mediaTypeWithoutParameters() + ";");
     }
 
     private int index;
