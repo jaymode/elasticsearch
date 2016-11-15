@@ -35,6 +35,8 @@ import java.net.UnknownHostException;
  */
 public final class TransportAddress implements Writeable {
 
+    public static final Version V_5_0_2_UNRELEASED = Version.fromId(5000299);
+
     /**
      * A <a href="https://en.wikipedia.org/wiki/0.0.0.0">non-routeable v4 meta transport address</a> that can be used for
      * testing or in scenarios where targets should be marked as non-applicable from a transport perspective.
@@ -78,7 +80,13 @@ public final class TransportAddress implements Writeable {
         final int len = in.readByte();
         final byte[] a = new byte[len]; // 4 bytes (IPv4) or 16 bytes (IPv6)
         in.readFully(a);
-        InetAddress inetAddress = InetAddress.getByAddress(a);
+        final String host;
+        if (in.getVersion().onOrAfter(V_5_0_2_UNRELEASED)) {
+            host = in.readString();
+        } else {
+            host = null;
+        }
+        InetAddress inetAddress = InetAddress.getByAddress(host, a);
         int port = in.readInt();
         this.address = new InetSocketAddress(inetAddress, port);
     }
@@ -91,6 +99,9 @@ public final class TransportAddress implements Writeable {
         byte[] bytes = address.getAddress().getAddress();  // 4 bytes (IPv4) or 16 bytes (IPv6)
         out.writeByte((byte) bytes.length); // 1 byte
         out.write(bytes, 0, bytes.length);
+        if (out.getVersion().onOrAfter(V_5_0_2_UNRELEASED)) {
+            out.writeString(address.getHostString());
+        }
         // don't serialize scope ids over the network!!!!
         // these only make sense with respect to the local machine, and will only formulate
         // the address incorrectly remotely.

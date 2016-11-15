@@ -25,6 +25,7 @@ import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData;
 import org.elasticsearch.common.lucene.Lucene;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.monitor.os.OsStats;
 import org.elasticsearch.index.query.SimpleQueryStringBuilder;
@@ -287,6 +288,7 @@ public class VersionTests extends ESTestCase {
         // once we released 5.0.0 and it's added to Version.java we need to remove this constant
         assertUnknownVersion(Script.V_5_1_0_UNRELEASED);
         // once we released 5.0.0 and it's added to Version.java we need to remove this constant
+        assertUnknownVersion(TransportAddress.V_5_0_2_UNRELEASED);
     }
 
     public static void assertUnknownVersion(Version version) {
