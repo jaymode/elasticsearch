@@ -71,6 +71,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.IndexSettings;
 import org.elasticsearch.index.VersionType;
@@ -252,7 +253,8 @@ public class InternalEngineTests extends ESTestCase {
         Field versionField = new NumericDocValuesField("_version", 0);
         document.add(uidField);
         document.add(versionField);
-        return new ParsedDocument(versionField, id, type, routing, timestamp, ttl, Arrays.asList(document), source, mappingUpdate);
+        return new ParsedDocument(versionField, id, type, routing, timestamp, ttl, Arrays.asList(document), source, XContentType.JSON,
+            mappingUpdate);
     }
 
     protected Store createStore() throws IOException {
@@ -332,6 +334,7 @@ public class InternalEngineTests extends ESTestCase {
     protected static final BytesReference B_1 = new BytesArray(new byte[]{1});
     protected static final BytesReference B_2 = new BytesArray(new byte[]{2});
     protected static final BytesReference B_3 = new BytesArray(new byte[]{3});
+    protected static final BytesReference SOURCE = new BytesArray("{}");
 
     public void testSegments() throws Exception {
         try (Store store = createStore();
@@ -611,7 +614,7 @@ public class InternalEngineTests extends ESTestCase {
 
     public void testFlushIsDisabledDuringTranslogRecovery() throws IOException {
         assertFalse(engine.isRecovering());
-        ParsedDocument doc = testParsedDocument("1", "test", null, -1, -1, testDocumentWithTextField(), B_1, null);
+        ParsedDocument doc = testParsedDocument("1", "test", null, -1, -1, testDocumentWithTextField(), SOURCE, null);
         engine.index(indexForDoc(doc));
         engine.close();
 
@@ -620,7 +623,7 @@ public class InternalEngineTests extends ESTestCase {
         assertTrue(engine.isRecovering());
         engine.recoverFromTranslog();
         assertFalse(engine.isRecovering());
-        doc = testParsedDocument("2", "test", null, -1, -1, testDocumentWithTextField(), B_1, null);
+        doc = testParsedDocument("2", "test", null, -1, -1, testDocumentWithTextField(), SOURCE, null);
         engine.index(indexForDoc(doc));
         engine.flush();
     }
@@ -1688,7 +1691,7 @@ public class InternalEngineTests extends ESTestCase {
     public void testTranslogReplayWithFailure() throws IOException {
         final int numDocs = randomIntBetween(1, 10);
         for (int i = 0; i < numDocs; i++) {
-            ParsedDocument doc = testParsedDocument(Integer.toString(i), "test", null, -1, -1, testDocument(), new BytesArray("{}"), null);
+            ParsedDocument doc = testParsedDocument(Integer.toString(i), "test", null, -1, -1, testDocument(), SOURCE, null);
             Engine.Index firstIndexRequest = new Engine.Index(newUid(doc), doc, Versions.MATCH_DELETED, VersionType.INTERNAL, PRIMARY, System.nanoTime(), -1, false);
             Engine.IndexResult indexResult = engine.index(firstIndexRequest);
             assertThat(indexResult.getVersion(), equalTo(1L));
@@ -1738,7 +1741,7 @@ public class InternalEngineTests extends ESTestCase {
     public void testSkipTranslogReplay() throws IOException {
         final int numDocs = randomIntBetween(1, 10);
         for (int i = 0; i < numDocs; i++) {
-            ParsedDocument doc = testParsedDocument(Integer.toString(i), "test", null, -1, -1, testDocument(), new BytesArray("{}"), null);
+            ParsedDocument doc = testParsedDocument(Integer.toString(i), "test", null, -1, -1, testDocument(), SOURCE, null);
             Engine.Index firstIndexRequest = new Engine.Index(newUid(doc), doc, Versions.MATCH_DELETED, VersionType.INTERNAL, PRIMARY, System.nanoTime(), -1, false);
             Engine.IndexResult firstIndexResult = engine.index(firstIndexRequest);
             assertThat(firstIndexResult.getVersion(), equalTo(1L));
@@ -1858,7 +1861,7 @@ public class InternalEngineTests extends ESTestCase {
     public void testTranslogReplay() throws IOException {
         final int numDocs = randomIntBetween(1, 10);
         for (int i = 0; i < numDocs; i++) {
-            ParsedDocument doc = testParsedDocument(Integer.toString(i), "test", null, -1, -1, testDocument(), new BytesArray("{}"), null);
+            ParsedDocument doc = testParsedDocument(Integer.toString(i), "test", null, -1, -1, testDocument(), SOURCE, null);
             Engine.Index firstIndexRequest = new Engine.Index(newUid(doc), doc, Versions.MATCH_DELETED, VersionType.INTERNAL, PRIMARY, System.nanoTime(), -1, false);
             Engine.IndexResult firstIndexResult = engine.index(firstIndexRequest);
             assertThat(firstIndexResult.getVersion(), equalTo(1L));
