@@ -30,6 +30,7 @@ import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 
 import java.net.SocketAddress;
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -198,23 +199,9 @@ public class Netty3HttpRequest extends RestRequest {
 
         @Override
         public Set<Entry<String, List<String>>> entrySet() {
-            return httpHeaders.names().stream().map(k -> new Entry<String, List<String>>() {
+            return httpHeaders.names().stream()
+                .map(k -> new AbstractMap.SimpleImmutableEntry<>(k, httpHeaders.getAll(k))).collect(Collectors.toSet());
 
-                @Override
-                public String getKey() {
-                    return k;
-                }
-
-                @Override
-                public List<String> getValue() {
-                    return httpHeaders.getAll(k);
-                }
-
-                @Override
-                public List<String> setValue(List<String> value) {
-                    throw new UnsupportedOperationException("modifications are not supported");
-                }
-            }).collect(Collectors.toSet());
         }
     }
 }
