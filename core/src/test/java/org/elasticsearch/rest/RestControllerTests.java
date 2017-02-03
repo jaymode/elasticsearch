@@ -46,7 +46,6 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.http.HttpInfo;
 import org.elasticsearch.http.HttpServerTransport;
 import org.elasticsearch.http.HttpStats;
-import org.elasticsearch.http.HttpTransportSettings;
 import org.elasticsearch.indices.breaker.HierarchyCircuitBreakerService;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.test.rest.FakeRestRequest;
@@ -252,9 +251,7 @@ public class RestControllerTests extends ESTestCase {
         String content = randomAsciiOfLengthBetween(1, BREAKER_LIMIT.bytesAsInt());
         TestRestRequest request = new TestRestRequest("/", content, null);
         AssertingChannel channel = new AssertingChannel(request, true, RestStatus.NOT_ACCEPTABLE);
-        restController = new RestController(
-            Settings.builder().put(HttpTransportSettings.SETTING_HTTP_CONTENT_TYPE_REQUIRED.getKey(), true).build(),
-            Collections.emptySet(), null, null, circuitBreakerService);
+        restController = new RestController(Settings.EMPTY, Collections.emptySet(), null, null, circuitBreakerService);
         restController.registerHandler(RestRequest.Method.GET, "/",
             (r, c, client) -> c.sendResponse(
                 new BytesRestResponse(RestStatus.OK, BytesRestResponse.TEXT_CONTENT_TYPE, BytesArray.EMPTY)));
@@ -271,42 +268,6 @@ public class RestControllerTests extends ESTestCase {
         assertFalse(channel.sendResponseCalled.get());
         restController.dispatchRequest(fakeRestRequest, channel, new ThreadContext(Settings.EMPTY));
         assertTrue(channel.sendResponseCalled.get());
-    }
-
-    public void testDispatchWorksWithPlainText() {
-        String content = randomAsciiOfLengthBetween(1, BREAKER_LIMIT.bytesAsInt());
-        FakeRestRequest fakeRestRequest = new FakeRestRequest.Builder(NamedXContentRegistry.EMPTY)
-            .withContent(new BytesArray(content), null).withPath("/foo")
-            .withHeaders(Collections.singletonMap("Content-Type", Collections.singletonList("text/plain"))).build();
-        AssertingChannel channel = new AssertingChannel(fakeRestRequest, true, RestStatus.OK);
-        restController.registerHandler(RestRequest.Method.GET, "/foo", new RestHandler() {
-            @Override
-            public void handleRequest(RestRequest request, RestChannel channel, NodeClient client) throws Exception {
-                channel.sendResponse(new BytesRestResponse(RestStatus.OK, BytesRestResponse.TEXT_CONTENT_TYPE, BytesArray.EMPTY));
-            }
-
-            @Override
-            public boolean supportsPlainText() {
-                return true;
-            }
-        });
-
-        assertFalse(channel.sendResponseCalled.get());
-        restController.dispatchRequest(fakeRestRequest, channel, new ThreadContext(Settings.EMPTY));
-        assertTrue(channel.sendResponseCalled.get());
-        assertWarnings("Plain text request bodies are deprecated. Use request parameters or body in a supported format.");
-    }
-
-    public void testDispatchWorksWithAutoDetection() {
-        FakeRestRequest fakeRestRequest = new FakeRestRequest.Builder(NamedXContentRegistry.EMPTY)
-            .withContent(new BytesArray("{}"), null).withPath("/")
-            .withHeaders(Collections.singletonMap("Content-Type", Collections.singletonList("application/x-www-form-urlencoded"))).build();
-        AssertingChannel channel = new AssertingChannel(fakeRestRequest, true, RestStatus.OK);
-
-        assertFalse(channel.sendResponseCalled.get());
-        restController.dispatchRequest(fakeRestRequest, channel, new ThreadContext(Settings.EMPTY));
-        assertTrue(channel.sendResponseCalled.get());
-        assertWarnings("Content type detection for rest requests is deprecated. Specify the content type using the [Content-Type] header.");
     }
 
     private static final class TestHttpServerTransport extends AbstractLifecycleComponent implements

@@ -68,8 +68,9 @@ public final class HttpTransportSettings {
         Setting.intSetting("http.publish_port", -1, -1, Property.NodeScope);
     public static final Setting<Boolean> SETTING_HTTP_DETAILED_ERRORS_ENABLED =
         Setting.boolSetting("http.detailed_errors.enabled", true, Property.NodeScope);
+    // TODO remove this when master is moved to 7.0. We shouldn't fail a rolling upgrade from 5.x to 6.0 because of a setting
     public static final Setting<Boolean> SETTING_HTTP_CONTENT_TYPE_REQUIRED =
-        Setting.boolSetting("http.content_type.required", false, Property.NodeScope);
+        Setting.boolSetting("http.content_type.required", true, Property.NodeScope, Property.Deprecated);
     public static final Setting<ByteSizeValue> SETTING_HTTP_MAX_CONTENT_LENGTH =
         Setting.byteSizeSetting("http.max_content_length", new ByteSizeValue(100, ByteSizeUnit.MB), Property.NodeScope);
     public static final Setting<ByteSizeValue> SETTING_HTTP_MAX_CHUNK_SIZE =

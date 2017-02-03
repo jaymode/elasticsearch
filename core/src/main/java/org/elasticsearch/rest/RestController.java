@@ -43,8 +43,6 @@ import org.elasticsearch.common.path.PathTrie;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.http.HttpTransportSettings;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.common.xcontent.XContentType;
 
@@ -71,10 +69,6 @@ public class RestController extends AbstractComponent {
     /** Rest headers that are copied to internal requests made during a rest request. */
     private final Set<String> headersToCopy;
 
-    private final boolean isContentTypeRequired;
-
-    private final DeprecationLogger deprecationLogger;
-
     public RestController(Settings settings, Set<String> headersToCopy, UnaryOperator<RestHandler> handlerWrapper,
                           NodeClient client, CircuitBreakerService circuitBreakerService) {
         super(settings);
@@ -85,8 +79,6 @@ public class RestController extends AbstractComponent {
         this.handlerWrapper = handlerWrapper;
         this.client = client;
         this.circuitBreakerService = circuitBreakerService;
-        this.isContentTypeRequired = HttpTransportSettings.SETTING_HTTP_CONTENT_TYPE_REQUIRED.get(settings);
-        this.deprecationLogger = new DeprecationLogger(logger);
     }
 
     /**
@@ -237,23 +229,7 @@ public class RestController extends AbstractComponent {
      */
     private boolean hasContentTypeOrCanAutoDetect(final RestRequest restRequest, final RestHandler restHandler) {
         if (restRequest.getXContentType() == null) {
-            if (restHandler != null && restHandler.supportsPlainText()) {
-                // content type of null with a handler that supports plain text gets through for now. Once we remove plain text this can
-                // be removed!
-                deprecationLogger.deprecated("Plain text request bodies are deprecated. Use request parameters or body " +
-                    "in a supported format.");
-            } else if (isContentTypeRequired) {
-                return false;
-            } else {
-                deprecationLogger.deprecated("Content type detection for rest requests is deprecated. Specify the content type using " +
-                    "the [Content-Type] header.");
-                XContentType xContentType = XContentFactory.xContentType(restRequest.content());
-                if (xContentType == null) {
-                    return false;
-                } else {
-                    restRequest.setXContentType(xContentType);
-                }
-            }
+            return false;
         }
         return true;
     }

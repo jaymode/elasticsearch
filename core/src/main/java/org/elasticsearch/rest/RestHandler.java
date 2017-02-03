@@ -37,13 +37,4 @@ public interface RestHandler {
     default boolean canTripCircuitBreaker() {
         return true;
     }
-
-    /**
-     * Indicates if a RestHandler supports plain text bodies
-     * @deprecated use request parameters or bodies that can be parsed with XContent!
-     */
-    @Deprecated
-    default boolean supportsPlainText() {
-        return false;
-    }
 }
