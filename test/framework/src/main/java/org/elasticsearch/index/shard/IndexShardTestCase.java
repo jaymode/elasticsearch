@@ -463,7 +463,7 @@ public abstract class IndexShardTestCase extends ESTestCase {
         return index;
     }
 
-    protected Engine.Delete deleteDoc(IndexShard shard, String type, String id) {
+    protected Engine.Delete deleteDoc(IndexShard shard, String type, String id) throws IOException {
         final Engine.Delete delete;
         if (shard.routingEntry().primary()) {
             delete = shard.prepareDeleteOnPrimary(type, id, Versions.MATCH_ANY, VersionType.INTERNAL);

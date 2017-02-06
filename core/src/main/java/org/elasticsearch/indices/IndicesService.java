@@ -856,7 +856,7 @@ public class IndicesService extends AbstractLifecycleComponent
         /**
          * Creates a new pending delete of an index
          */
-        public PendingDelete(ShardId shardId, IndexSettings settings) {
+        PendingDelete(ShardId shardId, IndexSettings settings) {
             this.index = shardId.getIndex();
             this.shardId = shardId.getId();
             this.settings = settings;
@@ -866,7 +866,7 @@ public class IndicesService extends AbstractLifecycleComponent
         /**
          * Creates a new pending delete of a shard
          */
-        public PendingDelete(Index index, IndexSettings settings) {
+        PendingDelete(Index index, IndexSettings settings) {
             this.index = index;
             this.shardId = -1;
             this.settings = settings;
@@ -1006,7 +1006,7 @@ public class IndicesService extends AbstractLifecycleComponent
         private final AtomicBoolean closed = new AtomicBoolean(false);
         private final IndicesRequestCache requestCache;
 
-        public CacheCleaner(IndicesFieldDataCache cache, IndicesRequestCache requestCache, Logger logger, ThreadPool threadPool, TimeValue interval) {
+        CacheCleaner(IndicesFieldDataCache cache, IndicesRequestCache requestCache, Logger logger, ThreadPool threadPool, TimeValue interval) {
             this.cache = cache;
             this.requestCache = requestCache;
             this.logger = logger;
@@ -1047,8 +1047,6 @@ public class IndicesService extends AbstractLifecycleComponent
     }
 
 
-    private static final Set<SearchType> CACHEABLE_SEARCH_TYPES = EnumSet.of(SearchType.QUERY_THEN_FETCH, SearchType.QUERY_AND_FETCH);
-
     /**
      * Can the shard request be cached at all?
      */
@@ -1058,7 +1056,7 @@ public class IndicesService extends AbstractLifecycleComponent
         // on the overridden statistics. So if you ran two queries on the same index with different stats
         // (because an other shard was updated) you would get wrong results because of the scores
         // (think about top_hits aggs or scripts using the score)
-        if (!CACHEABLE_SEARCH_TYPES.contains(context.searchType())) {
+        if (SearchType.QUERY_THEN_FETCH != context.searchType()) {
             return false;
         }
         IndexSettings settings = context.indexShard().indexSettings();

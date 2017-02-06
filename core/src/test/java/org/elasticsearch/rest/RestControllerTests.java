@@ -314,7 +314,7 @@ public class RestControllerTests extends ESTestCase {
     private static final class TestHttpServerTransport extends AbstractLifecycleComponent implements
         HttpServerTransport {
 
-        public TestHttpServerTransport() {
+        TestHttpServerTransport() {
             super(Settings.EMPTY);
         }
 
