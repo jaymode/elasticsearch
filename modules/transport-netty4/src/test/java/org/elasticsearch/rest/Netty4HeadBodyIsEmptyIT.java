@@ -19,6 +19,7 @@
 
 package org.elasticsearch.rest;
 
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -43,7 +44,7 @@ public class Netty4HeadBodyIsEmptyIT extends ESRestTestCase {
     }
 
     private void createTestDoc() throws IOException {
-        client().performRequest("PUT", "test/test/1", emptyMap(), new StringEntity("{\"test\": \"test\"}"));
+        client().performRequest("PUT", "test/test/1", emptyMap(), new StringEntity("{\"test\": \"test\"}", ContentType.APPLICATION_JSON));
     }
 
     public void testDocumentExists() throws IOException {
