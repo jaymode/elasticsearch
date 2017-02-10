@@ -87,7 +87,7 @@ public class Netty4HeadBodyIsEmptyIT extends ESRestTestCase {
             }
             builder.endObject();
 
-            client().performRequest("POST", "_aliases", emptyMap(), new StringEntity(builder.string()));
+            client().performRequest("POST", "_aliases", emptyMap(), new StringEntity(builder.string(), ContentType.APPLICATION_JSON));
             headTestCase("/_alias/test_alias", emptyMap(), greaterThan(0));
             headTestCase("/test/_alias/test_alias", emptyMap(), greaterThan(0));
         }

@@ -432,7 +432,7 @@ public class RestClientSingleHostTests extends RestClientTestCase {
         HttpEntity entity = null;
         boolean hasBody = request instanceof HttpEntityEnclosingRequest && getRandom().nextBoolean();
         if (hasBody) {
-            entity = new StringEntity(randomAsciiOfLengthBetween(10, 100));
+            entity = new StringEntity(randomAsciiOfLengthBetween(10, 100), ContentType.APPLICATION_JSON);
             ((HttpEntityEnclosingRequest) request).setEntity(entity);
         }
 
