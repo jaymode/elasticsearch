@@ -268,7 +268,7 @@ public class RecoveryDuringReplicationTests extends ESIndexLevelReplicationTestC
                 final String id = "pending_" + i;
                 threadPool.generic().submit(() -> {
                     try {
-                        shards.index(new IndexRequest(index.getName(), "type", id).source("{}"));
+                        shards.index(new IndexRequest(index.getName(), "type", id).source("{}", XContentType.JSON));
                     } catch (Exception e) {
                         throw new AssertionError(e);
                     } finally {
