@@ -29,11 +29,11 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.ServerCookieDecoder;
 import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
 import org.elasticsearch.common.bytes.BytesReference;
@@ -50,6 +50,8 @@ import org.elasticsearch.transport.netty4.Netty4Utils;
 
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -163,12 +165,21 @@ final class Netty4HttpChannel extends AbstractRestChannel {
 
     private void addCookies(HttpResponse resp) {
         if (transport.resetCookies) {
-            String cookieString = nettyRequest.headers().get(HttpHeaders.Names.COOKIE);
-            if (cookieString != null) {
-                Set<io.netty.handler.codec.http.cookie.Cookie> cookies = ServerCookieDecoder.STRICT.decode(cookieString);
+            List<String> cookieStrings = nettyRequest.headers().getAll(HttpHeaderNames.COOKIE);
+            if (cookieStrings.isEmpty() == false) {
+                Set<Cookie> cookies = new HashSet<>();
+                cookieStrings.forEach(cookieString -> cookies.addAll(ServerCookieDecoder.STRICT.decode(cookieString)));
                 if (!cookies.isEmpty()) {
-                    // Reset the cookies if necessary.
-                    resp.headers().set(HttpHeaderNames.SET_COOKIE, ServerCookieEncoder.STRICT.encode(cookies));
+                    List<String> responseCookieStrings = resp.headers().getAll(HttpHeaderNames.COOKIE);
+                    if (responseCookieStrings.isEmpty()) {
+                        resp.headers().set(HttpHeaderNames.SET_COOKIE, ServerCookieEncoder.STRICT.encode(cookies));
+                    } else {
+                        Map<String, Cookie> responseCookies = new HashMap<>();
+                        responseCookieStrings.forEach(cookieString ->
+                            ServerCookieDecoder.STRICT.decode(cookieString).forEach(cookie -> responseCookies.put(cookie.name(), cookie)));
+                        cookies.forEach(cookie -> responseCookies.putIfAbsent(cookie.name(), cookie));
+                        resp.headers().set(HttpHeaderNames.SET_COOKIE, ServerCookieEncoder.STRICT.encode(responseCookies.values()));
+                    }
                 }
             }
         }

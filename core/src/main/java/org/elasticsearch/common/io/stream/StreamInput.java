@@ -53,6 +53,9 @@ import java.nio.file.FileSystemException;
 import java.nio.file.FileSystemLoopException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -897,6 +900,11 @@ public abstract class StreamInput extends InputStream {
             builder.add(readNamedWriteable(categoryClass));
         }
         return builder;
+    }
+
+    public ZonedDateTime readZonedDateTime() throws IOException {
+        ZoneId zoneId = ZoneId.of(readString());
+        return Instant.ofEpochSecond(readLong(), (long) readInt()).atZone(zoneId);
     }
 
     public static StreamInput wrap(byte[] bytes) {

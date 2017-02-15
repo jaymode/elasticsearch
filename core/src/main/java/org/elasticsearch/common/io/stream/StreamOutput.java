@@ -50,6 +50,8 @@ import java.nio.file.FileSystemException;
 import java.nio.file.FileSystemLoopException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -936,4 +938,9 @@ public abstract class StreamOutput extends OutputStream {
         }
     }
 
+    public void writeZonedDateTime(ZonedDateTime zonedDateTime) throws IOException {
+        writeString(zonedDateTime.getZone().getId());
+        writeLong(zonedDateTime.toEpochSecond());
+        writeInt(zonedDateTime.getNano());
+    }
 }
