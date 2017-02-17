@@ -2155,11 +2155,21 @@ public abstract class ESIntegTestCase extends ESTestCase {
      * The returned client gets automatically closed when needed, it shouldn't be closed as part of tests otherwise
      * it cannot be reused by other tests anymore.
      */
-    protected static synchronized RestClient getRestClient() {
-        if (restClient == null) {
-            restClient = createRestClient(null);
+    protected RestClient getRestClient() {
+        synchronized (ESIntegTestCase.class) {
+            if (restClient == null) {
+                restClient = createRestClient(getHttpClientConfigCallback());
+            }
         }
         return restClient;
+    }
+
+    /**
+     * Returns the callback that allows configuration of the RestClient that is created in the {@link #getRestClient()} method.
+     * By default this method returns null.
+     */
+    protected RestClientBuilder.HttpClientConfigCallback getHttpClientConfigCallback() {
+        return null;
     }
 
     protected static RestClient createRestClient(RestClientBuilder.HttpClientConfigCallback httpClientConfigCallback) {

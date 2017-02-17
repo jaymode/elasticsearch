@@ -111,8 +111,10 @@ public abstract class ESRestTestCase extends ESTestCase {
             }
             clusterHosts = unmodifiableList(hosts);
             logger.info("initializing REST clients against {}", clusterHosts);
-            client = buildClient(restClientSettings(), clusterHosts.toArray(new HttpHost[clusterHosts.size()]));
-            adminClient = buildClient(restAdminSettings(), clusterHosts.toArray(new HttpHost[clusterHosts.size()]));
+            client = buildClient(restClientSettings(), clusterHosts.toArray(new HttpHost[clusterHosts.size()]),
+                getHttpClientConfigCallback());
+            adminClient = buildClient(restAdminSettings(), clusterHosts.toArray(new HttpHost[clusterHosts.size()]),
+                getAdminHttpClientConfigCallback());
         }
         assert client != null;
         assert adminClient != null;
@@ -281,7 +283,24 @@ public abstract class ESRestTestCase extends ESTestCase {
         return "http";
     }
 
-    protected RestClient buildClient(Settings settings, HttpHost[] hosts) throws IOException {
+    /**
+     * Returns the callback that allows configuration of the RestClient that is returned by the {@link #adminClient()} method.
+     * By default this method returns null.
+     */
+    protected RestClientBuilder.HttpClientConfigCallback getAdminHttpClientConfigCallback() {
+        return null;
+    }
+
+    /**
+     * Returns the callback that allows configuration of the RestClient that is created in the {@link #client()} ()} method.
+     * By default this method returns null.
+     */
+    protected RestClientBuilder.HttpClientConfigCallback getHttpClientConfigCallback() {
+        return null;
+    }
+
+    protected RestClient buildClient(Settings settings, HttpHost[] hosts,
+                                     RestClientBuilder.HttpClientConfigCallback callback) throws IOException {
         RestClientBuilder builder = RestClient.builder(hosts);
         String keystorePath = settings.get(TRUSTSTORE_PATH);
         if (keystorePath != null) {
@@ -313,6 +332,10 @@ public abstract class ESRestTestCase extends ESTestCase {
                 defaultHeaders[i++] = new BasicHeader(entry.getKey(), entry.getValue());
             }
             builder.setDefaultHeaders(defaultHeaders);
+        }
+
+        if (callback != null) {
+            builder.setHttpClientConfigCallback(callback);
         }
         return builder.build();
     }
