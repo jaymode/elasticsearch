@@ -131,7 +131,7 @@ public class IndexingIT extends ESRestTestCase {
         final int maxUpdates = 10;
         createIndex(index, settings.build());
         try (RestClient newNodeClient = buildClient(restClientSettings(),
-                nodes.getNewNodes().stream().map(Node::getPublishAddress).toArray(HttpHost[]::new))) {
+                nodes.getNewNodes().stream().map(Node::getPublishAddress).toArray(HttpHost[]::new), b -> b)) {
 
             int nUpdates = randomIntBetween(minUpdates, maxUpdates);
             logger.info("indexing docs with [{}] concurrent updates initially", nUpdates);
@@ -221,7 +221,7 @@ public class IndexingIT extends ESRestTestCase {
         final String index = "test";
         createIndex(index, settings.build());
         try (RestClient newNodeClient = buildClient(restClientSettings(),
-            nodes.getNewNodes().stream().map(Node::getPublishAddress).toArray(HttpHost[]::new))) {
+            nodes.getNewNodes().stream().map(Node::getPublishAddress).toArray(HttpHost[]::new), b -> b)) {
             int numDocs = 0;
             final int numberOfInitialDocs = 1 + randomInt(5);
             logger.info("indexing [{}] docs initially", numberOfInitialDocs);
