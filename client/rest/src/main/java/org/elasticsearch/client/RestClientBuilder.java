@@ -21,6 +21,7 @@ package org.elasticsearch.client;
 
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -195,7 +196,8 @@ public final class RestClientBuilder {
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom()
                 .setConnectTimeout(DEFAULT_CONNECT_TIMEOUT_MILLIS)
                 .setSocketTimeout(DEFAULT_SOCKET_TIMEOUT_MILLIS)
-                .setConnectionRequestTimeout(DEFAULT_CONNECTION_REQUEST_TIMEOUT_MILLIS);
+                .setConnectionRequestTimeout(DEFAULT_CONNECTION_REQUEST_TIMEOUT_MILLIS)
+                .setCookieSpec(CookieSpecs.STANDARD_STRICT);
         if (requestConfigCallback != null) {
             requestConfigBuilder = requestConfigCallback.customizeRequestConfig(requestConfigBuilder);
         }
