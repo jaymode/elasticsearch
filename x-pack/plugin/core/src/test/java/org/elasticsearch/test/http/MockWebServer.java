@@ -152,6 +152,7 @@ public class MockWebServer implements Closeable {
 
         @Override
         public void configure(HttpsParameters params) {
+            super.configure(params);
             params.setNeedClientAuth(needClientAuth);
         }
     }

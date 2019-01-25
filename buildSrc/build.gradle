@@ -106,6 +106,9 @@ jar {
  *****************************************************************************/
 
 repositories {
+  maven {
+    url "https://repository.apache.org/content/groups/public/"
+  }
   jcenter()
 }
 
