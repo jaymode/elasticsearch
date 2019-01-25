@@ -10,14 +10,12 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.CheckedRunnable;
-import org.elasticsearch.common.network.NetworkModule;
 import org.elasticsearch.common.settings.MockSecureSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.env.TestEnvironment;
 import org.elasticsearch.test.SecurityIntegTestCase;
 import org.elasticsearch.transport.Transport;
-import org.elasticsearch.xpack.core.security.SecurityField;
 import org.elasticsearch.xpack.core.ssl.SSLConfiguration;
 import org.elasticsearch.xpack.core.ssl.SSLService;
 
@@ -88,15 +86,13 @@ public class SSLReloadIntegTests extends SecurityIntegTestCase {
         Settings.Builder builder = Settings.builder()
                 .put(settings.filter((s) -> s.startsWith("xpack.security.transport.ssl.") == false));
         builder.put("path.home", createTempDir())
-            .put("http.host", "localhost")
             .put("xpack.security.transport.ssl.key", nodeKeyPath)
             .put("xpack.security.transport.ssl.key_passphrase", "testnode")
             .put("xpack.security.transport.ssl.certificate", nodeCertPath)
             .putList("xpack.security.transport.ssl.certificate_authorities",
                 Arrays.asList(nodeCertPath.toString(), clientCertPath.toString(), updateableCertPath.toString()))
             .put("resource.reload.interval.high", "1s");
-        builder.put("xpack.security.transport.ssl.enabled", true);
-        builder.put(NetworkModule.HTTP_TYPE_KEY, SecurityField.NAME4);
+        //builder.put("xpack.security.transport.ssl.enabled", true);
         Settings withTransportSSL = builder.build();
         withTransportSSL
             .filter(s -> s.startsWith("xpack.security.transport.ssl"))
@@ -109,12 +105,13 @@ public class SSLReloadIntegTests extends SecurityIntegTestCase {
                     builder.put(key.replace("xpack.security.transport.ssl.", "xpack.security.http.ssl."), withTransportSSL.get(key));
                 }
             });
+        builder.put("xpack.security.http.ssl.enabled", true);
         return builder.build();
     }
 
     @Override
     protected boolean transportSSLEnabled() {
-        return true;
+        return false;
     }
 
     public void testThatSSLConfigurationReloadsOnModification() throws Exception {
