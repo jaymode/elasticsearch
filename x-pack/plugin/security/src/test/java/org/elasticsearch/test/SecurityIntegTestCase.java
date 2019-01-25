@@ -276,6 +276,11 @@ public abstract class SecurityIntegTestCase extends ESIntegTestCase {
     }
 
     @Override
+    protected boolean addMockHttpTransport() {
+        return false;
+    }
+
+    @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
         return customSecuritySettingsSource.nodePlugins();
     }

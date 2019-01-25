@@ -5,26 +5,40 @@
  */
 package org.elasticsearch.xpack.ssl;
 
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.common.CheckedRunnable;
+import org.elasticsearch.common.network.NetworkModule;
 import org.elasticsearch.common.settings.MockSecureSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.env.TestEnvironment;
 import org.elasticsearch.test.SecurityIntegTestCase;
 import org.elasticsearch.transport.Transport;
+import org.elasticsearch.xpack.core.security.SecurityField;
 import org.elasticsearch.xpack.core.ssl.SSLConfiguration;
 import org.elasticsearch.xpack.core.ssl.SSLService;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
-
+import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.AccessController;
+import java.security.KeyStore;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
@@ -74,14 +88,27 @@ public class SSLReloadIntegTests extends SecurityIntegTestCase {
         Settings.Builder builder = Settings.builder()
                 .put(settings.filter((s) -> s.startsWith("xpack.security.transport.ssl.") == false));
         builder.put("path.home", createTempDir())
+            .put("http.host", "localhost")
             .put("xpack.security.transport.ssl.key", nodeKeyPath)
             .put("xpack.security.transport.ssl.key_passphrase", "testnode")
             .put("xpack.security.transport.ssl.certificate", nodeCertPath)
             .putList("xpack.security.transport.ssl.certificate_authorities",
                 Arrays.asList(nodeCertPath.toString(), clientCertPath.toString(), updateableCertPath.toString()))
             .put("resource.reload.interval.high", "1s");
-
         builder.put("xpack.security.transport.ssl.enabled", true);
+        builder.put(NetworkModule.HTTP_TYPE_KEY, SecurityField.NAME4);
+        Settings withTransportSSL = builder.build();
+        withTransportSSL
+            .filter(s -> s.startsWith("xpack.security.transport.ssl"))
+            .keySet()
+            .forEach(key -> {
+                if (key.endsWith("certificate_authorities")) {
+                    builder.putList(key.replace("xpack.security.transport.ssl.", "xpack.security.http.ssl."),
+                        withTransportSSL.getAsList(key));
+                } else {
+                    builder.put(key.replace("xpack.security.transport.ssl.", "xpack.security.http.ssl."), withTransportSSL.get(key));
+                }
+            });
         return builder.build();
     }
 
@@ -145,5 +172,37 @@ public class SSLReloadIntegTests extends SecurityIntegTestCase {
             }
         });
         latch.await();
+    }
+
+    public void testHttpClientDoesntTrustServer() throws Exception {
+        KeyStore store = KeyStore.getInstance(KeyStore.getDefaultType());
+        try (InputStream is =
+                 Files.newInputStream(getDataPath("/org/elasticsearch/xpack/security/transport/ssl/certs/simple/testnode_updated.jks"))) {
+            store.load(is, "testnode".toCharArray());
+        }
+        SSLContext context = SSLContext.getInstance("TLSv1.3");
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        kmf.init(store, "testnode".toCharArray());
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(store);
+        context.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+        assertThat(Arrays.asList(context.getDefaultSSLParameters().getProtocols()).contains("TLSv1.3"), is(true));
+
+        try (CloseableHttpClient client = HttpClients.custom().setSSLContext(context).build()) {
+            SSLHandshakeException sslException = expectThrows(SSLHandshakeException.class, () ->
+                privilegedConnect(() -> client.execute(new HttpGet(getHttpURL())).close()));
+            assertThat(sslException.getCause().getMessage(), containsString("PKIX path validation failed"));
+        }
+    }
+
+    private static void privilegedConnect(CheckedRunnable<Exception> runnable) throws Exception {
+        try {
+            AccessController.doPrivileged((PrivilegedExceptionAction<Void>) () -> {
+                runnable.run();
+                return null;
+            });
+        } catch (PrivilegedActionException e) {
+            throw (Exception) e.getCause();
+        }
     }
 }
