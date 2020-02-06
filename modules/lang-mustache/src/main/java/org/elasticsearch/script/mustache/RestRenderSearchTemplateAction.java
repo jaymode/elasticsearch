@@ -22,23 +22,27 @@ package org.elasticsearch.script.mustache;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 import org.elasticsearch.script.ScriptType;
 
 import java.io.IOException;
+import java.util.List;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 import static org.elasticsearch.rest.RestRequest.Method.POST;
 
 public class RestRenderSearchTemplateAction extends BaseRestHandler {
 
-    public RestRenderSearchTemplateAction(RestController controller) {
-        controller.registerHandler(GET, "/_render/template", this);
-        controller.registerHandler(POST, "/_render/template", this);
-        controller.registerHandler(GET, "/_render/template/{id}", this);
-        controller.registerHandler(POST, "/_render/template/{id}", this);
+    @Override
+    public List<Route> handledRoutes() {
+        return unmodifiableList(asList(
+            new Route("/_render/template", GET),
+            new Route("/_render/template", POST),
+            new Route("/_render/template/{id}", GET),
+            new Route("/_render/template/{id}", POST)));
     }
 
     @Override

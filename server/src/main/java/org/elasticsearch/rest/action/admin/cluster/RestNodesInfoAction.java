@@ -26,13 +26,15 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.set.Sets;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestActions.NodesResponseRestListener;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableList;
 import static org.elasticsearch.rest.RestRequest.Method.GET;
 
 public class RestNodesInfoAction extends BaseRestHandler {
@@ -50,15 +52,19 @@ public class RestNodesInfoAction extends BaseRestHandler {
 
     private final SettingsFilter settingsFilter;
 
-    public RestNodesInfoAction(RestController controller, SettingsFilter settingsFilter) {
-        controller.registerHandler(GET, "/_nodes", this);
-        // this endpoint is used for metrics, not for node IDs, like /_nodes/fs
-        controller.registerHandler(GET, "/_nodes/{nodeId}", this);
-        controller.registerHandler(GET, "/_nodes/{nodeId}/{metrics}", this);
-        // added this endpoint to be aligned with stats
-        controller.registerHandler(GET, "/_nodes/{nodeId}/info/{metrics}", this);
-
+    public RestNodesInfoAction(SettingsFilter settingsFilter) {
         this.settingsFilter = settingsFilter;
+    }
+
+    @Override
+    public List<Route> handledRoutes() {
+        return unmodifiableList(asList(
+            new Route("/_nodes", GET),
+            // this endpoint is used for metrics, not for node IDs, like /_nodes/fs
+            new Route("/_nodes/{nodeId}", GET),
+            new Route("/_nodes/{nodeId}/{metrics}", GET),
+            // added this endpoint to be aligned with stats
+            new Route("/_nodes/{nodeId}/info/{metrics}", GET)));
     }
 
     @Override

@@ -21,18 +21,20 @@ package org.elasticsearch.rest.action.admin.cluster;
 import org.elasticsearch.action.admin.cluster.storedscripts.DeleteStoredScriptRequest;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.rest.BaseRestHandler;
-import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.rest.action.RestToXContentListener;
 
 import java.io.IOException;
+import java.util.List;
 
+import static java.util.Collections.singletonList;
 import static org.elasticsearch.rest.RestRequest.Method.DELETE;
 
 public class RestDeleteStoredScriptAction extends BaseRestHandler {
 
-    public RestDeleteStoredScriptAction(RestController controller) {
-        controller.registerHandler(DELETE, "/_scripts/{id}", this);
+    @Override
+    public List<Route> handledRoutes() {
+        return singletonList(new Route("/_scripts/{id}", DELETE));
     }
 
     @Override
