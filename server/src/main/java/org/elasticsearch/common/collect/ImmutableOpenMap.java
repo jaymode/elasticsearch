@@ -31,8 +31,12 @@ import com.carrotsearch.hppc.predicates.ObjectObjectPredicate;
 import com.carrotsearch.hppc.predicates.ObjectPredicate;
 import com.carrotsearch.hppc.procedures.ObjectObjectProcedure;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * An immutable map implementation based on open hash map.
@@ -403,6 +407,321 @@ public final class ImmutableOpenMap<KType, VType> implements Iterable<ObjectObje
         @Override
         public String visualizeKeyDistribution(int characters) {
             return map.visualizeKeyDistribution(characters);
+        }
+    }
+
+    public Map<KType, VType> asMap() {
+        return new ImmutableOpenMapJdkMap<>(this);
+    }
+
+    private static class ImmutableOpenMapJdkMap<KType, VType> implements Map<KType, VType> {
+
+        private final ImmutableOpenMap<KType, VType> map;
+
+        private ImmutableOpenMapJdkMap(ImmutableOpenMap<KType, VType> map) {
+            this.map = map;
+        }
+
+        @Override
+        public int size() {
+            return map.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return map.isEmpty();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public boolean containsKey(Object key) {
+            return map.containsKey((KType) key);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public boolean containsValue(Object value) {
+            return map.values().contains(((VType) value));
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public VType get(Object key) {
+            return map.get((KType) key);
+        }
+
+        @Override
+        public VType put(KType key, VType value) {
+            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+        }
+
+        @Override
+        public VType remove(Object key) {
+            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+        }
+
+        @Override
+        public void putAll(Map<? extends KType, ? extends VType> m) {
+            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+        }
+
+        @Override
+        public void clear() {
+            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+        }
+
+        @Override
+        public Set<KType> keySet() {
+            return new ImmutableObjectContainerSet<>(map.keys());
+        }
+
+        @Override
+        public Collection<VType> values() {
+            return new ImmutableObjectContainerSet<>(map.values());
+        }
+
+        @Override
+        public Set<Entry<KType, VType>> entrySet() {
+            return new ImmutableOpenMapEntrySet<>(map);
+        }
+    }
+
+    private static class ImmutableOpenMapEntrySet<KType, VType> implements Set<Entry<KType, VType>> {
+
+        private final ImmutableOpenMap<KType, VType> map;
+
+        private ImmutableOpenMapEntrySet(ImmutableOpenMap<KType, VType> map) {
+            this.map = map;
+        }
+
+        @Override
+        public int size() {
+            return map.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return map.isEmpty();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public boolean contains(Object o) {
+            if (o instanceof Entry) {
+                KType key = ((Entry<KType, VType>) o).getKey();
+                if (map.containsKey(key)) {
+                    VType value = ((Entry<KType, VType>) o).getValue();
+                    return Objects.equals(map.get(key), value);
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public Iterator<Entry<KType, VType>> iterator() {
+            final Iterator<ObjectObjectCursor<KType, VType>> iterator = map.iterator();
+            return new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    return iterator.hasNext();
+                }
+
+                @Override
+                public Entry<KType, VType> next() {
+                    final ObjectObjectCursor<KType, VType> cursor = iterator.next();
+                    return new Entry<>() {
+                        @Override
+                        public KType getKey() {
+                            return cursor.key;
+                        }
+
+                        @Override
+                        public VType getValue() {
+                            return cursor.value;
+                        }
+
+                        @Override
+                        public VType setValue(VType value) {
+                            throw new UnsupportedOperationException("cannot set value on immutable entry");
+                        }
+                    };
+                }
+            };
+        }
+
+        @Override
+        public Object[] toArray() {
+            final Object[] array = new Object[size()];
+            final Iterator<Entry<KType, VType>> iterator = iterator();
+            int i = 0;
+            while (iterator.hasNext()) {
+                if (i >= array.length) {
+                    throw new IllegalStateException("size() is less than number of values returned using iterator");
+                }
+                array[i++] = iterator.next();
+            }
+            return array;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T[] toArray(T[] a) {
+            final int size = size();
+            final T[] array = a.length >= size ? a :
+                (T[])java.lang.reflect.Array
+                    .newInstance(a.getClass().getComponentType(), size);
+            final Iterator<Entry<KType, VType>> iterator = iterator();
+            int i = 0;
+            while (iterator.hasNext()) {
+                if (i >= array.length) {
+                    throw new IllegalStateException("size() is less than number of values returned using iterator");
+                }
+                array[i++] = (T) iterator.next();
+            }
+            return array;
+        }
+
+        @Override
+        public boolean add(Entry<KType, VType> kTypeVTypeEntry) {
+            throw new UnsupportedOperationException("cannot add value to immutable set");
+        }
+
+        @Override
+        public boolean remove(Object o) {
+            throw new UnsupportedOperationException("cannot remove value from immutable set");
+        }
+
+        @Override
+        public boolean containsAll(Collection<?> c) {
+            return c.stream().allMatch(this::contains);
+        }
+
+        @Override
+        public boolean addAll(Collection<? extends Entry<KType, VType>> c) {
+            throw new UnsupportedOperationException("cannot add values to immutable set");
+        }
+
+        @Override
+        public boolean retainAll(Collection<?> c) {
+            throw new UnsupportedOperationException("cannot retain values in immutable set");
+        }
+
+        @Override
+        public boolean removeAll(Collection<?> c) {
+            throw new UnsupportedOperationException("cannot remove values from immutable set");
+        }
+
+        @Override
+        public void clear() {
+            throw new UnsupportedOperationException("cannot clear immutable set");
+        }
+    }
+
+    private static class ImmutableObjectContainerSet<IType> implements Set<IType> {
+
+        private final ObjectContainer<IType> container;
+
+        private ImmutableObjectContainerSet(ObjectContainer<IType> container) {
+            this.container = container;
+        }
+
+        @Override
+        public int size() {
+            return container.size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return container.isEmpty();
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public boolean contains(Object o) {
+            return container.contains((IType) o);
+        }
+
+        @Override
+        public Iterator<IType> iterator() {
+            final Iterator<ObjectCursor<IType>> iterator = container.iterator();
+            return new Iterator<>() {
+                @Override
+                public boolean hasNext() {
+                    return iterator.hasNext();
+                }
+
+                @Override
+                public IType next() {
+                    return iterator.next().value;
+                }
+            };
+        }
+
+        @Override
+        public Object[] toArray() {
+            final Object[] array = new Object[size()];
+            final Iterator<IType> iterator = iterator();
+            int i = 0;
+            while (iterator.hasNext()) {
+                if (i >= array.length) {
+                    throw new IllegalStateException("size() is less than number of values returned using iterator");
+                }
+                array[i++] = iterator.next();
+            }
+            return array;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T[] toArray(T[] a) {
+            final int size = size();
+            final T[] array = a.length >= size ? a :
+                (T[])java.lang.reflect.Array
+                    .newInstance(a.getClass().getComponentType(), size);
+            final Iterator<IType> iterator = iterator();
+            int i = 0;
+            while (iterator.hasNext()) {
+                if (i >= array.length) {
+                    throw new IllegalStateException("size() is less than number of values returned using iterator");
+                }
+                array[i++] = (T) iterator.next();
+            }
+            return array;
+        }
+
+        @Override
+        public boolean add(IType value) {
+            throw new UnsupportedOperationException("cannot add value to immutable set");
+        }
+
+        @Override
+        public boolean remove(Object o) {
+            throw new UnsupportedOperationException("cannot remove value from immutable set");
+        }
+
+        @Override
+        public boolean containsAll(Collection<?> c) {
+            return c.stream().allMatch(this::contains);
+        }
+
+        @Override
+        public boolean addAll(Collection<? extends IType> c) {
+            throw new UnsupportedOperationException("cannot add values to immutable set");
+        }
+
+        @Override
+        public boolean retainAll(Collection<?> c) {
+            throw new UnsupportedOperationException("cannot retain values in immutable set");
+        }
+
+        @Override
+        public boolean removeAll(Collection<?> c) {
+            throw new UnsupportedOperationException("cannot remove values from immutable set");
+        }
+
+        @Override
+        public void clear() {
+            throw new UnsupportedOperationException("cannot clear immutable set");
         }
     }
 }
