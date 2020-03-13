@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 /**
  * An immutable map implementation based on open hash map.
@@ -410,8 +412,46 @@ public final class ImmutableOpenMap<KType, VType> implements Iterable<ObjectObje
         }
     }
 
+    /**
+     * @return a wrapper around this {@link ImmutableOpenMap} that exposes the contents as a
+     * {@link Map}
+     */
     public Map<KType, VType> asMap() {
         return new ImmutableOpenMapJdkMap<>(this);
+    }
+
+    /**
+     * @return a map with the result of the computation from the remapping function. If the
+     * computation returns the same value as the existing value and the key is in the map, the
+     * same instance of the map will be returned.
+     */
+    public ImmutableOpenMap<KType, VType> compute(KType key, BiFunction<? super KType, ? super VType, ? extends VType> remappingFunction) {
+        Objects.requireNonNull(remappingFunction);
+        VType oldValue = get(key);
+
+        VType newValue = remappingFunction.apply(key, oldValue);
+        if (newValue == oldValue) {
+            if (containsKey(key)) {
+                return this;
+            } else {
+                return copyAndModify(mapCopy -> mapCopy.put(key, newValue));
+            }
+        }
+
+
+        final Consumer<ObjectObjectHashMap<KType, VType>> modifier;
+        if (newValue == null && containsKey(key)) {
+            modifier = mapCopy -> mapCopy.remove(key);
+        } else {
+            modifier = mapCopy -> mapCopy.put(key, newValue);
+        }
+        return copyAndModify(modifier);
+    }
+
+    private ImmutableOpenMap<KType, VType> copyAndModify(Consumer<ObjectObjectHashMap<KType, VType>> modifier) {
+        ObjectObjectHashMap<KType, VType> copiedMap = new ObjectObjectHashMap<>(map);
+        modifier.accept(copiedMap);
+        return new ImmutableOpenMap<>(copiedMap);
     }
 
     private static class ImmutableOpenMapJdkMap<KType, VType> implements Map<KType, VType> {
@@ -452,22 +492,22 @@ public final class ImmutableOpenMap<KType, VType> implements Iterable<ObjectObje
 
         @Override
         public VType put(KType key, VType value) {
-            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public VType remove(Object key) {
-            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public void putAll(Map<? extends KType, ? extends VType> m) {
-            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public void clear() {
-            throw new UnsupportedOperationException("cannot modify an ImmutableOpenMap!");
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -542,7 +582,7 @@ public final class ImmutableOpenMap<KType, VType> implements Iterable<ObjectObje
 
                         @Override
                         public VType setValue(VType value) {
-                            throw new UnsupportedOperationException("cannot set value on immutable entry");
+                            throw new UnsupportedOperationException();
                         }
                     };
                 }
@@ -583,12 +623,12 @@ public final class ImmutableOpenMap<KType, VType> implements Iterable<ObjectObje
 
         @Override
         public boolean add(Entry<KType, VType> kTypeVTypeEntry) {
-            throw new UnsupportedOperationException("cannot add value to immutable set");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public boolean remove(Object o) {
-            throw new UnsupportedOperationException("cannot remove value from immutable set");
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -598,22 +638,22 @@ public final class ImmutableOpenMap<KType, VType> implements Iterable<ObjectObje
 
         @Override
         public boolean addAll(Collection<? extends Entry<KType, VType>> c) {
-            throw new UnsupportedOperationException("cannot add values to immutable set");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public boolean retainAll(Collection<?> c) {
-            throw new UnsupportedOperationException("cannot retain values in immutable set");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public boolean removeAll(Collection<?> c) {
-            throw new UnsupportedOperationException("cannot remove values from immutable set");
+            throw new UnsupportedOperationException();
         }
 
         @Override
         public void clear() {
-            throw new UnsupportedOperationException("cannot clear immutable set");
+            throw new UnsupportedOperationException();
         }
     }
 
