@@ -154,7 +154,7 @@ public class ThreadPool implements ReportingService<ThreadPoolInfo>, Scheduler {
             TimeValue.timeValueMillis(200), TimeValue.ZERO, Setting.Property.NodeScope);
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public ThreadPool(final Settings settings, final ExecutorBuilder<?>... customBuilders) {
+    public ThreadPool(final Settings settings, final ThreadContext threadContext, final ExecutorBuilder<?>... customBuilders) {
         assert Node.NODE_NAME_SETTING.exists(settings);
 
         final Map<String, ExecutorBuilder> builders = new HashMap<>();
@@ -188,7 +188,7 @@ public class ThreadPool implements ReportingService<ThreadPoolInfo>, Scheduler {
         }
         this.builders = Collections.unmodifiableMap(builders);
 
-        threadContext = new ThreadContext(settings);
+        this.threadContext = threadContext;
 
         final Map<String, ExecutorHolder> executors = new HashMap<>();
         for (final Map.Entry<String, ExecutorBuilder> entry : builders.entrySet()) {

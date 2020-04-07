@@ -61,12 +61,14 @@ import org.elasticsearch.cluster.routing.allocation.DiskThresholdMonitor;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.StopWatch;
 import org.elasticsearch.common.breaker.CircuitBreaker;
+import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.component.Lifecycle;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Injector;
 import org.elasticsearch.common.inject.Key;
 import org.elasticsearch.common.inject.ModulesBuilder;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.lease.Releasables;
 import org.elasticsearch.common.logging.DeprecationLogger;
 import org.elasticsearch.common.logging.NodeAndClusterIdStateListener;
@@ -85,6 +87,7 @@ import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.common.util.PageCacheRecycler;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.core.internal.io.IOUtils;
 import org.elasticsearch.discovery.Discovery;
@@ -175,8 +178,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -328,13 +333,31 @@ public class Node implements Closeable {
             resourcesToClose.add(nodeEnvironment);
             localNodeFactory = new LocalNodeFactory(settings, nodeEnvironment.nodeId());
 
-            final List<ExecutorBuilder<?>> executorBuilders = pluginsService.getExecutorBuilders(settings);
+            final Map<String, Tuple<Class<?>, Writeable.Reader<?>>> threadContextObjects = pluginsService.filterPlugins(Plugin.class)
+                .stream()
+                .map(Plugin::getThreadContextObjects)
+                .map(Map::entrySet)
+                .flatMap(Set::stream)
+                .collect(Collectors.toMap(Entry::getKey, Entry::getValue, (v1, v2) -> {
+                    Set<String> allKeys = new HashSet<>();
+                    String duplicateKeys = pluginsService.filterPlugins(Plugin.class)
+                        .stream()
+                        .map(Plugin::getThreadContextObjects)
+                        .map(Map::keySet)
+                        .flatMap(Set::stream)
+                        .filter(key -> allKeys.add(key) == false)
+                        .collect(Collectors.joining());
+                    throw new IllegalStateException("The following object keys [" + duplicateKeys +
+                        "] have been registered by two or more plugins");
+                }));
 
-            final ThreadPool threadPool = new ThreadPool(settings, executorBuilders.toArray(new ExecutorBuilder[0]));
+            final ThreadContext threadContext = new ThreadContext(settings, threadContextObjects);
+            final List<ExecutorBuilder<?>> executorBuilders = pluginsService.getExecutorBuilders(settings);
+            final ThreadPool threadPool = new ThreadPool(settings, threadContext, executorBuilders.toArray(new ExecutorBuilder[0]));
             resourcesToClose.add(() -> ThreadPool.terminate(threadPool, 10, TimeUnit.SECONDS));
             // adds the context to the DeprecationLogger so that it does not need to be injected everywhere
-            DeprecationLogger.setThreadContext(threadPool.getThreadContext());
-            resourcesToClose.add(() -> DeprecationLogger.removeThreadContext(threadPool.getThreadContext()));
+            DeprecationLogger.setThreadContext(threadContext);
+            resourcesToClose.add(() -> DeprecationLogger.removeThreadContext(threadContext));
 
             final List<Setting<?>> additionalSettings = new ArrayList<>(pluginsService.getPluginSettings());
             final List<String> additionalSettingsFilter = new ArrayList<>(pluginsService.getPluginSettingsFilter());

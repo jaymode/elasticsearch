@@ -25,9 +25,11 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.metadata.IndexTemplateMetadata;
 import org.elasticsearch.cluster.node.DiscoveryNodeRole;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.io.stream.NamedWriteable;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
+import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.SettingUpgrader;
 import org.elasticsearch.common.settings.Settings;
@@ -181,6 +183,10 @@ public abstract class Plugin implements Closeable {
 
     public Set<DiscoveryNodeRole> getRoles() {
         return Set.of();
+    }
+
+    public Map<String, Tuple<Class<?>, Writeable.Reader<?>>> getThreadContextObjects() {
+        return Map.of();
     }
 
     /**

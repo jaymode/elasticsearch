@@ -20,9 +20,12 @@ package org.elasticsearch.common.util.concurrent;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.Version;
 import org.elasticsearch.action.support.ContextPreservingActionListener;
 import org.elasticsearch.client.OriginSettingClient;
 import org.elasticsearch.common.collect.Tuple;
+import org.elasticsearch.common.io.stream.BytesStreamOutput;
+import org.elasticsearch.common.io.stream.NamedWriteable;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Writeable;
@@ -33,7 +36,9 @@ import org.elasticsearch.http.HttpTransportSettings;
 import org.elasticsearch.tasks.Task;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -48,6 +53,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 
+import static org.elasticsearch.common.bytes.BytesReference.toBytes;
 import static org.elasticsearch.http.HttpTransportSettings.SETTING_HTTP_MAX_WARNING_HEADER_COUNT;
 import static org.elasticsearch.http.HttpTransportSettings.SETTING_HTTP_MAX_WARNING_HEADER_SIZE;
 
@@ -93,6 +99,7 @@ public final class ThreadContext implements Writeable {
     private static final Logger logger = LogManager.getLogger(ThreadContext.class);
     private static final ThreadContextStruct DEFAULT_CONTEXT = new ThreadContextStruct();
     private final Map<String, String> defaultHeader;
+    private final Map<String, RegisteredObject<?>> registeredObjects;
     private final ThreadLocal<ThreadContextStruct> threadLocal;
     private final int maxWarningHeaderCount;
     private final long maxWarningHeaderSize;
@@ -102,7 +109,12 @@ public final class ThreadContext implements Writeable {
      * @param settings the settings to read the default request headers from
      */
     public ThreadContext(Settings settings) {
+        this(settings, Map.of());
+    }
+
+    public ThreadContext(Settings settings, Map<String, RegisteredObject<?>> objects) {
         this.defaultHeader = buildDefaultHeaders(settings);
+        this.registeredObjects = objects;
         this.threadLocal = ThreadLocal.withInitial(() -> DEFAULT_CONTEXT);
         this.maxWarningHeaderCount = SETTING_HTTP_MAX_WARNING_HEADER_COUNT.get(settings);
         this.maxWarningHeaderSize = SETTING_HTTP_MAX_WARNING_HEADER_SIZE.get(settings).getBytes();
@@ -126,12 +138,7 @@ public final class ThreadContext implements Writeable {
         } else {
             threadLocal.set(DEFAULT_CONTEXT);
         }
-        return () -> {
-            // If the node and thus the threadLocal get closed while this task
-            // is still executing, we don't want this runnable to fail with an
-            // uncaught exception
-            threadLocal.set(context);
-        };
+        return () -> threadLocal.set(context);
     }
 
     /**
@@ -317,6 +324,7 @@ public final class ThreadContext implements Writeable {
      * Puts a header into the context
      */
     public void putHeader(String key, String value) {
+        ensureKeyNotRegistered(key);
         threadLocal.set(threadLocal.get().putRequest(key, value));
     }
 
@@ -324,6 +332,7 @@ public final class ThreadContext implements Writeable {
      * Puts all of the given headers into this context
      */
     public void putHeader(Map<String, String> header) {
+        header.keySet().forEach(this::ensureKeyNotRegistered);
         threadLocal.set(threadLocal.get().putHeaders(header));
     }
 
@@ -331,7 +340,30 @@ public final class ThreadContext implements Writeable {
      * Puts a transient header object into this context
      */
     public void putTransient(String key, Object value) {
+        ensureKeyNotRegistered(key);
         threadLocal.set(threadLocal.get().putTransient(key, value));
+    }
+
+    /**
+     * Puts an object into this context. The
+     */
+    public <T> void putObject(String key, T value) {
+        ensureRegistered(key, value);
+        ThreadContextStruct struct = threadLocal.get();
+    }
+
+    <T> void ensureRegistered(String key, T value) {
+        RegisteredObject<?> object = registeredObjects.get(key);
+        if (object.clazz != value.getClass()) {
+            throw new IllegalArgumentException("value class [" + value.getClass() +
+                "] does not match registered class [" + object.clazz + "]");
+        }
+    }
+
+    void ensureKeyNotRegistered(String key) {
+        if (registeredObjects.containsKey(key)) {
+            throw new IllegalArgumentException("key [" + key + "] is for a registered object and should be used with putObject only");
+        }
     }
 
     /**
@@ -441,6 +473,7 @@ public final class ThreadContext implements Writeable {
         private static final ThreadContextStruct EMPTY =
             new ThreadContextStruct(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), false);
 
+        // TODO refactor to a single map for request + transient
         private final Map<String, String> requestHeaders;
         private final Map<String, Object> transientHeaders;
         private final Map<String, Set<String>> responseHeaders;
@@ -586,6 +619,27 @@ public final class ThreadContext implements Writeable {
             return new ThreadContextStruct(requestHeaders, responseHeaders, newTransient, isSystemContext);
         }
 
+        private <T extends NamedWriteable> ThreadContextStruct putObject(String key, T value) {
+            if (transientHeaders.containsKey(key) || requestHeaders.containsKey(key)) {
+                throw new IllegalArgumentException("value for key [" + key + "] already present");
+            }
+
+            Map<String, Object> newTransient = new HashMap<>(this.transientHeaders);
+            newTransient.put(key, value);
+            return new ThreadContextStruct(requestHeaders, responseHeaders, newTransient, isSystemContext);
+        }
+
+        private <T extends NamedWriteable> String writeObject(T value, Version version) {
+            try (BytesStreamOutput out = new BytesStreamOutput()) {
+                Version.writeVersion(version, out);
+                out.writeString(value.getClass().getName());
+                value.writeTo(out);
+                return Base64.getEncoder().encodeToString(toBytes(out.bytes()));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
         private ThreadContextStruct copyHeaders(Iterable<Map.Entry<String, String>> headers) {
             Map<String, String> newHeaders = new HashMap<>();
             for (Map.Entry<String, String> header : headers) {
@@ -627,7 +681,7 @@ public final class ThreadContext implements Writeable {
 
         @Override
         public void run() {
-            try (ThreadContext.StoredContext ignore = stashContext()){
+            try (ThreadContext.StoredContext ignore = stashContext()) {
                 ctx.restore();
                 in.run();
             }
@@ -737,4 +791,16 @@ public final class ThreadContext implements Writeable {
         }
     }
 
+    public static class RegisteredObject<T> {
+
+        private final Class<T> clazz;
+        private final Writer<T> writer;
+        private final Reader<T> reader;
+
+        public RegisteredObject(Class<T> clazz, Writer<T> writer, Reader<T> reader) {
+            this.clazz = clazz;
+            this.writer = writer;
+            this.reader = reader;
+        }
+    }
 }
