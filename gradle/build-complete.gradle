@@ -18,6 +18,8 @@ if (buildNumber) {
             include("**/reaper.log")
             include("**/build/test-results/**/*.xml")
             include("**/build/testclusters/**")
+            include("**/build/**/*.sysout")
+            include("**/build/**/*.syserr")
             exclude("**/build/testclusters/**/data/**")
             exclude("**/build/testclusters/**/distro/**")
             exclude("**/build/testclusters/**/repo/**")
