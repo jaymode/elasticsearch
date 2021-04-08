@@ -18,6 +18,8 @@ import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.OriginSettingClient;
+import org.elasticsearch.cluster.ClusterChangedEvent;
+import org.elasticsearch.cluster.ClusterStateListener;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.TriFunction;
@@ -62,7 +64,7 @@ import static org.elasticsearch.xpack.core.security.authc.AuthenticationField.AU
 /**
  * A service that exposes the CRUD operations for the async task-specific index.
  */
-public final class AsyncTaskIndexService<R extends AsyncResponse<R>> {
+public final class AsyncTaskIndexService<R extends AsyncResponse<R>> implements ClusterStateListener {
 
     public static final String HEADERS_FIELD = "headers";
     public static final String RESPONSE_HEADERS_FIELD = "response_headers";
@@ -137,6 +139,8 @@ public final class AsyncTaskIndexService<R extends AsyncResponse<R>> {
     private final NamedWriteableRegistry registry;
     private final Writeable.Reader<R> reader;
 
+    private volatile Version mappingVersion = Version.V_EMPTY;
+
     public AsyncTaskIndexService(String index,
                                  ClusterService clusterService,
                                  ThreadContext threadContext,
@@ -150,6 +154,7 @@ public final class AsyncTaskIndexService<R extends AsyncResponse<R>> {
         this.clientWithOrigin = new OriginSettingClient(client, origin);
         this.registry = registry;
         this.reader = reader;
+        clusterService.addListener(this);
     }
 
     /**
@@ -484,5 +489,31 @@ public final class AsyncTaskIndexService<R extends AsyncResponse<R>> {
                 threadContext.addResponseHeader(entry.getKey(), value);
             }
         }
+    }
+
+    @Override
+    public void clusterChanged(ClusterChangedEvent event) {
+        if (event.metadataChanged()) {
+            if (event.state().metadata().hasIndex(index)) {
+                mappingVersion = getMappingVersion(event.state().metadata().index(index).mapping().sourceAsMap());
+            } else {
+                // mappings will come from the master since the index doesn't exist
+                mappingVersion = event.state().nodes().getMasterNode().getVersion();
+            }
+        }
+    }
+
+    private Version getMappingVersion(Map<String, Object> mapping) {
+        Map<String, Object> meta = (Map<String, Object>) mapping.get("_meta");
+        if (meta == null) {
+            throw new IllegalStateException("Cannot read version string in index " + index);
+        }
+
+        final String versionString = (String) meta.get("version");
+        if (versionString == null) {
+            // If we called `Version.fromString(null)`, it would return `Version.CURRENT`
+            return Version.V_EMPTY;
+        }
+        return Version.fromString(versionString);
     }
 }
